@@ -1,0 +1,45 @@
+version: 2
+
+models:
+  - name: dim_policy_history
+    description: Type 2 slowly changing policy dimension with effective validity windows.
+    columns:
+      - name: policy_version_key
+        tests: [not_null, unique]
+      - name: policy_id
+        tests: [not_null]
+      - name: status
+        tests:
+          - accepted_values:
+              arguments:
+                values: [active, cancelled, expired]
+
+  - name: dim_policy_current
+    columns:
+      - name: policy_id
+        tests: [not_null, unique]
+
+  - name: fct_claims_current
+    description: Latest state of every claim, enriched with policy and payment measures.
+    columns:
+      - name: claim_id
+        tests: [not_null, unique]
+      - name: policy_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_policy_current')
+                field: policy_id
+      - name: status
+        tests:
+          - accepted_values:
+              arguments:
+                values: [open, investigating, approved, denied, closed]
+      - name: risk_score
+        tests: [not_null]
+
+  - name: claims_kpis
+    columns:
+      - name: total_claims
+        tests: [not_null]

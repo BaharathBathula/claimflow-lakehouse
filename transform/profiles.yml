@@ -1,0 +1,9 @@
+claimflow:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('CLAIMFLOW_DB_PATH', 'data/warehouse/claimflow.duckdb') }}"
+      schema: main
+      threads: 4
+
