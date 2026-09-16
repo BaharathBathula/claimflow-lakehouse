@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "claimflow-lakehouse"
+version = "1.0.0"
+description = "A production-style real-time insurance claims lakehouse portfolio project."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Baharath Bathula" }]
+dependencies = [
+  "duckdb>=1.1,<2",
+  "faker>=25,<40",
+  "fastapi>=0.115,<1",
+  "pandas>=2.2,<3",
+  "plotly>=5.24,<7",
+  "prometheus-client>=0.21,<1",
+  "pyarrow>=17,<22",
+  "pydantic>=2.9,<3",
+  "python-dotenv>=1.0,<2",
+  "rich>=13.9,<15",
+  "streamlit>=1.39,<2",
+  "typer>=0.12,<1",
+  "uvicorn[standard]>=0.30,<1",
+]
+
+[project.optional-dependencies]
+kafka = ["confluent-kafka>=2.6,<3"]
+transform = ["dbt-duckdb>=1.9,<2"]
+dev = [
+  "claimflow-lakehouse[kafka,transform]",
+  "mypy>=1.12,<2",
+  "pytest>=8.3,<9",
+  "pytest-cov>=5,<7",
+  "ruff>=0.7,<1",
+]
+
+[project.scripts]
+claimflow = "claimflow.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/claimflow"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --disable-warnings --maxfail=1"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = true
+

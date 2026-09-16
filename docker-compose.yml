@@ -1,0 +1,89 @@
+name: claimflow
+
+services:
+  redpanda:
+    image: redpandadata/redpanda:v24.2.18
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=internal://0.0.0.0:29092,external://0.0.0.0:9092
+      - --advertise-kafka-addr=internal://redpanda:29092,external://localhost:9092
+    ports:
+      - "9092:9092"
+      - "9644:9644"
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  console:
+    image: redpandadata/console:v2.7.2
+    environment:
+      KAFKA_BROKERS: redpanda:29092
+    ports:
+      - "8080:8080"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+
+  ingester:
+    build: .
+    command: >-
+      claimflow ingest-kafka --bootstrap-servers redpanda:29092
+      --metrics-port 9108
+    environment:
+      CLAIMFLOW_TOKENIZATION_KEY: ${CLAIMFLOW_TOKENIZATION_KEY:-development-only-key}
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "9108:9108"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    profiles: ["streaming"]
+
+  api:
+    build: .
+    command: uvicorn claimflow.api:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./data:/app/data:ro
+    ports:
+      - "8000:8000"
+    profiles: ["apps"]
+
+  dashboard:
+    build: .
+    command: streamlit run src/claimflow/dashboard.py --server.address 0.0.0.0
+    volumes:
+      - ./data:/app/data:ro
+    ports:
+      - "8501:8501"
+    profiles: ["apps"]
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    profiles: ["observability"]
+
+  grafana:
+    image: grafana/grafana:11.3.1
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: claimflow
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+    profiles: ["observability"]
+
